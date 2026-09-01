@@ -2,6 +2,39 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const GITHUB_USERNAME = process.env.GITHUB_USERNAME;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const isLocalDevelopment = process.env.NODE_ENV !== 'production' && !process.env.VERCEL_ENV;
+
+function buildMissingEnvResponse(res: VercelResponse) {
+  const payload = {
+    error: 'GitHub environment variables missing',
+    env: {
+      GITHUB_USERNAME: Boolean(GITHUB_USERNAME),
+      GITHUB_TOKEN: Boolean(GITHUB_TOKEN),
+    },
+    ...(isLocalDevelopment
+      ? {
+          details:
+            'Set GITHUB_USERNAME and GITHUB_TOKEN as server-side environment variables before calling /api/github-pinned.',
+        }
+      : {}),
+  };
+
+  return res.status(503).json(payload);
+}
+
+function buildGitHubFailureResponse(res: VercelResponse, status: number, details: string) {
+  const safeDetails = details?.trim() || `GitHub responded with status ${status}.`;
+
+  if (isLocalDevelopment) {
+    return res.status(status).json({
+      error: 'GitHub GraphQL request failed',
+      status,
+      details: safeDetails,
+    });
+  }
+
+  return res.status(502).json({ error: 'GitHub repositories are temporarily unavailable.' });
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -9,7 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (!GITHUB_USERNAME || !GITHUB_TOKEN) {
-    return res.status(503).json({ error: 'GitHub data unavailable' });
+    return buildMissingEnvResponse(res);
   }
 
   const query = `
@@ -53,51 +86,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body: JSON.stringify({ query, variables: { login: GITHUB_USERNAME } }),
     });
 
-    if (!response.ok) {
-      return res.status(502).json({ error: 'GitHub repositories are temporarily unavailable.' });
+    const rawText = await response.text();
+    let payload: any = {};
+
+    try {
+      payload = rawText ? JSON.parse(rawText) : {};
+    } catch {
+      payload = { message: rawText || `GitHub returned status ${response.status}.` };
     }
 
-    const data = (await response.json()) as {
-      data?: {
-        user?: {
-          pinnedItems?: {
-            nodes?: Array<{
-              id: string;
-              name: string;
-              owner: { login: string };
-              description: string | null;
-              url: string;
-              homepageUrl: string | null;
-              primaryLanguage: { name: string } | null;
-              stargazerCount: number;
-              forkCount: number;
-              updatedAt: string | null;
-              repositoryTopics?: { nodes?: Array<{ topic?: { name?: string } }> };
-            }>;
-          };
-        };
-      };
-    };
+    if (!response.ok) {
+      const githubMessage = payload?.message || payload?.errors?.[0]?.message || `GitHub responded with status ${response.status}.`;
+      return buildGitHubFailureResponse(res, response.status, githubMessage);
+    }
 
-    const repos = (data?.data?.user?.pinnedItems?.nodes ?? []).map((repo) => ({
+    const user = payload?.data?.user;
+    const pinnedItems = user?.pinnedItems;
+    const nodes = pinnedItems?.nodes;
+
+    if (!user || !pinnedItems || !Array.isArray(nodes)) {
+      const details = payload?.errors?.[0]?.message || 'GitHub did not return a valid user or pinnedItems payload.';
+      return buildGitHubFailureResponse(res, 200, details);
+    }
+
+    const repositories = nodes.map((repo: any) => ({
       id: repo.id,
       name: repo.name,
-      owner: repo.owner.login,
+      owner: repo.owner?.login ?? null,
       description: repo.description,
       url: repo.url,
-      homepage: repo.homepageUrl,
+      homepage: repo.homepageUrl ?? null,
       primaryLanguage: repo.primaryLanguage?.name ?? null,
       stargazerCount: repo.stargazerCount ?? 0,
       forkCount: repo.forkCount ?? 0,
       updatedAt: repo.updatedAt ?? null,
       topics: (repo.repositoryTopics?.nodes ?? [])
-        .map((node) => node.topic?.name)
-        .filter((name): name is string => Boolean(name)),
+        .map((topicNode: any) => topicNode.topic?.name)
+        .filter((topic: string | undefined): topic is string => Boolean(topic)),
     }));
 
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=60');
-    return res.status(200).json(repos);
-  } catch {
-    return res.status(502).json({ error: 'GitHub repositories are temporarily unavailable.' });
+    return res.status(200).json({ repositories });
+  } catch (error: any) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return buildGitHubFailureResponse(res, 502, message);
   }
 }

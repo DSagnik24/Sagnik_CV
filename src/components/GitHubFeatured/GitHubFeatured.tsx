@@ -147,8 +147,8 @@ export function GitHubFeatured() {
           throw new Error('Failed to fetch GitHub data.');
         }
 
-        const data = (await res.json()) as GitHubPinnedRepo[];
-        setRepos(data ?? []);
+        const data = (await res.json()) as { repositories?: GitHubPinnedRepo[] };
+        setRepos(data?.repositories ?? []);
         setError(false);
       } catch {
         setRepos([]);
