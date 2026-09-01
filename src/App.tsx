@@ -25,6 +25,7 @@ import {
   X,
 } from 'lucide-react';
 import { useThemeContext } from './context/ThemeContext';
+import { GitHubFeatured } from './components/GitHubFeatured/GitHubFeatured';
 import { profile, experience, projects, skills, certifications, education, publication, algorithms, navItems } from './data/profile';
 
 const themeOptions = ['dark', 'light', 'system'] as const;
@@ -149,23 +150,29 @@ function App() {
           ))}
         </section>
 
-        <SectionHeader title="About / engineering philosophy" eyebrow="Profile" />
-        <section id="about" className="mt-12 grid gap-8 lg:grid-cols-[1fr_0.9fr]">
+        <SectionHeader title="Profile" eyebrow="About me & principles" />
+        <section id="about" className="mt-12 grid gap-8 lg:grid-cols-2">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} variants={sectionFade} transition={{ duration: 0.45 }} className="rounded-3xl border border-white/10 bg-slate-900/70 p-7">
-            <p className="text-lg leading-8 text-slate-300">
+            <div className="flex items-center gap-3 text-sky-200"><MonitorCog size={18} /> <span className="text-sm uppercase tracking-[0.18em]">About me</span></div>
+            <p className="mt-5 text-lg leading-8 text-slate-300">
               I’m a backend-focused software engineer with hands-on experience in <span className="text-slate-100">Java</span>, <span className="text-slate-100">Spring Boot</span>, and <span className="text-slate-100">Hibernate</span>, paired with product-minded full-stack work in <span className="text-slate-100">React</span> and AI integrations.
             </p>
             <p className="mt-5 text-lg leading-8 text-slate-300">
-              My interest lies in turning ambiguous problems into reliable systems — defining the API boundary, building the backend, validating with tests, and shipping with a clear feedback loop.
+              I enjoy turning ambiguous problems into dependable software — clarifying the backend contract, delivering the implementation, and validating it with a clear feedback loop.
             </p>
           </motion.div>
+
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} variants={sectionFade} transition={{ duration: 0.5 }} className="rounded-3xl border border-white/10 bg-slate-900/70 p-7">
-            <div className="flex items-center gap-3 text-sky-200"><MonitorCog size={18} /> <span className="text-sm uppercase tracking-[0.18em]">How I build</span></div>
+            <div className="flex items-center gap-3 text-sky-200"><Code2 size={18} /> <span className="text-sm uppercase tracking-[0.18em]">Engineering principles</span></div>
             <ul className="mt-5 space-y-4 text-slate-300">
-              <li className="flex gap-3"><span className="mt-1 h-2.5 w-2.5 rounded-full bg-sky-300" />Understand requirements and shape the right backend contract.</li>
-              <li className="flex gap-3"><span className="mt-1 h-2.5 w-2.5 rounded-full bg-sky-300" />Design clean APIs and resilient data flows.</li>
-              <li className="flex gap-3"><span className="mt-1 h-2.5 w-2.5 rounded-full bg-sky-300" />Build with Java, Spring Boot, React, and AI integrations.</li>
-              <li className="flex gap-3"><span className="mt-1 h-2.5 w-2.5 rounded-full bg-sky-300" />Validate with testing and refine in iteration.</li>
+              {[
+                'Reliability — Build systems that behave predictably.',
+                'Clean Architecture — Keep APIs, services, and data flows understandable.',
+                'Practical Engineering — Choose solutions that solve the actual problem.',
+                'Continuous Improvement — Improve through building, testing, debugging, and feedback.',
+              ].map((item) => (
+                <li key={item} className="flex gap-3"><span className="mt-1 h-2.5 w-2.5 rounded-full bg-sky-300" />{item}</li>
+              ))}
             </ul>
           </motion.div>
         </section>
@@ -209,9 +216,10 @@ function App() {
           <CodePlayground />
         </section>
 
-        <SectionHeader title="GitHub activity" eyebrow="Code" />
+        <SectionHeader title="Featured on GitHub" eyebrow="Code" />
         <section id="github" className="mt-12 rounded-3xl border border-white/10 bg-slate-900/70 p-6">
-          <GitHubPanel />
+          <p className="mb-5 text-sm text-slate-300">Projects and repositories I&apos;ve chosen to showcase.</p>
+          <GitHubFeatured />
         </section>
 
         <SectionHeader title="Problem solving" eyebrow="LeetCode" />
@@ -644,54 +652,6 @@ function CodePlayground() {
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function GitHubPanel() {
-  const [repos, setRepos] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch('https://api.github.com/users/DSagnik24/repos?per_page=6')
-      .then((res) => {
-        if (!res.ok) throw new Error('GitHub API unavailable');
-        return res.json();
-      })
-      .then((data) => {
-        setRepos(data || []);
-      })
-      .catch(() => {
-        setError('Unable to load GitHub activity.');
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) return <div className="text-slate-300">Loading GitHub activity...</div>;
-  if (error) return <div className="text-slate-300">{error} <a href={profile.github} target="_blank" rel="noreferrer" className="text-sky-200">Visit GitHub →</a></div>;
-  if (!repos.length) return <div className="text-slate-300">No repositories available.</div>;
-
-  return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {repos.map((repo) => (
-        <div key={repo.id} className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="font-medium text-white">{repo.name}</div>
-            <Github size={16} className="text-slate-400" />
-          </div>
-          <p className="mt-3 text-sm text-slate-300">{repo.description || 'No description provided.'}</p>
-          <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-400">
-            <span>{repo.language || 'Java'}</span>
-          </div>
-          <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
-            <span>★ {repo.stargazers_count ?? 0}</span>
-            <span>⑂ {repo.forks_count ?? 0}</span>
-          </div>
-          <div className="mt-4 text-xs text-slate-400">Updated {new Date(repo.updated_at).toLocaleDateString()}</div>
-          <a href={repo.html_url} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 text-sm text-sky-200">View Repository <ArrowRight size={14} /></a>
-        </div>
-      ))}
     </div>
   );
 }

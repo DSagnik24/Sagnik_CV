@@ -216,6 +216,29 @@ code {
   }
 }
 
+.github-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.github-card {
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .github-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .github-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 button,
 a {
   transition: all 0.2s ease;

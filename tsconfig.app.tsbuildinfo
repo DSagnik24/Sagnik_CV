@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/context/themecontext.tsx","./src/data/profile.ts"],"version":"5.9.3"}
+{"root":["./src/app.tsx","./src/main.tsx","./src/components/githubfeatured/githubfeatured.tsx","./src/context/themecontext.tsx","./src/data/profile.ts"],"version":"5.9.3"}
